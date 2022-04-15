@@ -1,0 +1,26 @@
+version: '3.9'
+
+services:
+
+  postgresql-db:
+    restart: always
+    image: postgres
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_NAME=task-db
+      - POSTGRES_USER=task-user
+      - POSTGRES_PASSWORD=task-user-password
+    volumes:
+      - ./db:/var/lib/postgresql/data 
+  
+  webapp:
+    restart: always
+    build: 
+      context: ./
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./db:/app/task_single_table/db
+    command: bash -c 'python ./task_single_table/manage.py makemigrations && python ./task_single_table/manage.py migrate --noinput && python ./task_single_table/manage.py collectstatic --noinput && cd task_single_table && gunicorn task_single_table.wsgi:application --bind 0.0.0.0:8000'
+    

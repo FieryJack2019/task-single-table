@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    </head>
+    <body>
+        <div class="container py-4"> 
+            <form class="form-inline" id="formFilter" >
+                {% csrf_token %}
+                <input id="page" name="page" type="hidden" value="{{ page_obj.number }}">
+                <div class="form-group col-md-2">
+                  <select name="fieldName" id="field" class="form-control">
+                    <option value="date" selected>Дата</option>
+                    <option value="name">Название</option>
+                    <option value="count">Количество</option>
+                    <option value="distance">Расстояние</option>
+                  </select>
+                </div>
+                <div class="form-group col-md-2">
+                    <select name="condition" id="condition" class="form-control">
+                      <option value="" selected>Равно</option>
+                      <option value="__icontains">Содержит</option>
+                      <option value="__gt">Больше</option>
+                      <option value="__lt">Меньше</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-2">
+                    <input name="value" id="value" class="form-control" type="text" placeholder="Значение">
+                </div>
+                <div class="form-group col-md-2", style="margin-left: 50px;">
+                    <button type="button" id="buttonSubmit" class="btn btn-primary">Показать</button>
+                </div>
+            </form>
+        </div>
+        <div class="container">
+            <table id="table" class="table table-bordered table-hover">
+                <thead class="thead-dark">
+                  <tr>
+                    <th scope="col">Id</th>
+                    <th scope="col">Дата</th>
+                    <th scope="col">Название</th>
+                    <th scope="col">Количество</th>
+                    <th scope="col">Расстояние</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for row in object_list %}
+                        <tr>
+                            <th scope="row">{{row.pk}}</th>
+                            <td>{{row.date}}</td>
+                            <td>{{row.name}}</td>
+                            <td>{{row.count}}</td>
+                            <td>{{row.distance}}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+              </table>
+              {% if is_paginated %}
+                <nav>
+                    <ul class="pagination" id="paginatorBlock">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item" id="paginatorPrevious">
+                                <button type="button" onclick="paginator(-1)" class="page-link" id="previous" value="-1" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                                <span class="sr-only">Previous</span>
+                            </li>
+                        {% endif %}
+                        <li class="page-item col-md-1" id="numberPage">{{ page_obj.number }}</li>
+                        {% if page_obj.has_next %}
+                            <li class="page-item" id="paginatorNext">
+                                <button type="button" onclick="paginator(1)" class="page-link" id="next" value="1" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                                <span class="sr-only">Next</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+              {% endif %}
+        </div>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script>
+            function updateData () {
+                $.ajax({
+                    data: $('#formFilter').serialize(),
+                    url: "{% url 'tablePage' %}",
+                    type: "POST",
+                    success: function(response) {
+                        console.log(response.object_list);
+                        document.getElementById("tableBody").remove();
+                        const tbody = document.createElement('tbody');
+                        tbody.id = 'tableBody';
+                        var newTable = "";
+                        for (var i = 0; i < response.object_list.length; ++i){
+                            newTable = newTable + `
+                            <tr>
+                                <th scope="row">${response.object_list[i].id}</th>
+                                <td>${response.object_list[i].date}</td>
+                                <td>${response.object_list[i].name}</td>
+                                <td>${response.object_list[i].count}</td>
+                                <td>${response.object_list[i].distance}</td>
+                            </tr>`;
+                        }
+                        tbody.innerHTML = newTable;
+                        document.getElementById('table').appendChild(tbody);
+
+                        if (document.getElementById("paginatorPrevious")){
+                            document.getElementById("paginatorPrevious").remove();
+                        }
+                        document.getElementById("numberPage").remove();
+                        if (document.getElementById("paginatorNext")){
+                            document.getElementById("paginatorNext").remove();
+                        }
+                        
+                        if (response.page_obj.has_previous == true) {
+                            const li = document.createElement('li');
+                            li.id = "paginatorPrevious";
+                            li.className = "page-item";
+                            li.innerHTML = `
+                            <button type="button" onclick="paginator(-1)" class="page-link" id="previous" value="-1" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                            <span class="sr-only">Previous</span>` 
+                            document.getElementById('paginatorBlock').appendChild(li);
+                        }
+                        if (response.page_obj.has_previous == true || response.page_obj.has_next == true){
+                            const li = document.createElement('li');
+                            li.id = "numberPage";
+                            li.className = "page-item col-md-1";
+                            li.innerHTML = document.getElementById("page").value;
+                            document.getElementById('paginatorBlock').appendChild(li);
+                        }
+                        if (response.page_obj.has_next == true) {
+                            const li = document.createElement('li');
+                            li.id = "paginatorNext";
+                            li.className = "page-item";
+                            li.innerHTML = `
+                            <button type="button" onclick="paginator(1)" class="page-link" id="next" value="-1" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                            <span class="sr-only">Next</span>` 
+                            document.getElementById('paginatorBlock').appendChild(li);
+                        }
+                    }
+                });
+            };
+            
+            function paginator (editPage) {
+                var numberPage = document.getElementById("page");
+                numberPage.value = Number(numberPage.value) + editPage;
+                document.getElementById("numberPage").textContent = Number(numberPage.value);
+                updateData();
+
+            }
+
+            function acceptFilter () {
+                document.getElementById("page").value = 1;
+                updateData();
+            }
+
+            $(document).ready(function () {
+                document.querySelector("#buttonSubmit").onclick = acceptFilter;
+            });
+        </script>
+        
+    </body>
+</html>
